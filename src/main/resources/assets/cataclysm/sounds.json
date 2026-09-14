@@ -1,0 +1,174 @@
+{
+  "kolokolnia_kill": {
+    "sounds": [
+      "cataclysm:other/kill_effect/kolokolnia_kill"
+    ]
+  },
+  "moan1": {
+    "sounds": [
+      "cataclysm:hit_sounds/moan1"
+    ]
+  },
+  "moan2": {
+    "sounds": [
+      "cataclysm:hit_sounds/moan2"
+    ]
+  },
+  "moan3": {
+    "sounds": [
+      "cataclysm:hit_sounds/moan3"
+    ]
+  },
+  "moan4": {
+    "sounds": [
+      "cataclysm:hit_sounds/moan4"
+    ]
+  },
+  "module_disable": {
+    "sounds": [
+      "cataclysm:module_sounds/off"
+    ]
+  },
+  "module_enable": {
+    "sounds": [
+      "cataclysm:module_sounds/on"
+    ]
+  },
+  "off": {
+    "sounds": [
+      "cataclysm:module_sounds/off2"
+    ]
+  },
+  "on": {
+    "sounds": [
+      "cataclysm:module_sounds/on2"
+    ]
+  },
+  "crime": {
+    "sounds": [
+      "cataclysm:hit_sounds/crime"
+    ]
+  },
+  "frag_effect_echo_main": {
+    "sounds": [
+      "cataclysm:charmsfxpack/echocharmmain"
+    ]
+  },
+  "frag_effect_knock_main": {
+    "sounds": [
+      "cataclysm:charmsfxpack/knockcharmmain"
+    ]
+  },
+  "frag_effect_pulse": {
+    "sounds": [
+      "cataclysm:charmsfxpack/pulsecharmdistant0",
+      "cataclysm:charmsfxpack/pulsecharmdistant1",
+      "cataclysm:charmsfxpack/pulsecharmdistant2",
+      "cataclysm:charmsfxpack/pulsecharmdistant3",
+      "cataclysm:charmsfxpack/pulsecharmdistant4"
+    ]
+  },
+  "frag_effect_sparks_collision": {
+    "sounds": [
+      "cataclysm:charmsfxpack/sparkscollisionneared"
+    ]
+  },
+  "metallic": {
+    "sounds": [
+      "cataclysm:hit_sounds/metallic"
+    ]
+  },
+  "welcome": {
+    "sounds": [
+      "cataclysm:other/notification/notif"
+    ]
+  },
+  "module_enable_type2": {
+    "sounds": [
+      "cataclysm:module_sounds/on1"
+    ]
+  },
+  "module_disable_type2": {
+    "sounds": [
+      "cataclysm:module_sounds/off1"
+    ]
+  },
+  "mine": {
+    "sounds": [
+      "cataclysm:other/auto_mine/mine"
+    ]
+  },
+  "accountswitch": {
+    "sounds": [
+      "cataclysm:alt_manager/accountswitch"
+    ]
+  },
+  "searchtyping": {
+    "sounds": [
+      "cataclysm:clickgui/searchtyping"
+    ]
+  },
+  "slider": {
+    "sounds": [
+      "cataclysm:clickgui/slider"
+    ]
+  },
+  "switchcategory": {
+    "sounds": [
+      "cataclysm:clickgui/switchcategory"
+    ]
+  },
+  "no-settings": {
+    "sounds": [
+      "cataclysm:clickgui/no-settings"
+    ]
+  },
+  "buttonclick": {
+    "sounds": [
+      "cataclysm:clickgui/buttonclick"
+    ]
+  },
+  "unknowncommand": {
+    "sounds": [
+      "cataclysm:commands/unknowncommand"
+    ]
+  },
+  "low": {
+    "sounds": [
+      "cataclysm:other/notification/low"
+    ]
+  },
+  "playerping": {
+    "sounds": [
+      "cataclysm:other/notification/playerping"
+    ]
+  },
+  "entity.ribbit.ambient": {
+    "sounds": [
+      "cataclysm:entity/ribbit_ambient1",
+      "cataclysm:entity/ribbit_ambient2",
+      "cataclysm:entity/ribbit_ambient3",
+      "cataclysm:entity/ribbit_ambient4",
+      "cataclysm:entity/ribbit_ambient5"
+    ]
+  },
+  "entity.ribbit.step": {
+    "sounds": [
+      "cataclysm:entity/ribbit_step1",
+      "cataclysm:entity/ribbit_step2"
+    ]
+  },
+  "entity.ribbit.hurt": {
+    "sounds": [
+      "cataclysm:entity/ribbit_hurt1",
+      "cataclysm:entity/ribbit_hurt2",
+      "cataclysm:entity/ribbit_hurt3"
+    ]
+  },
+  "entity.ribbit.death": {
+    "sounds": [
+      "cataclysm:entity/ribbit_death1",
+      "cataclysm:entity/ribbit_death2"
+    ]
+  }
+}

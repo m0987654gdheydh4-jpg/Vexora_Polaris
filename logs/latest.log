@@ -1,0 +1,118 @@
+[15:31:44] [main/INFO]: Loading Minecraft 1.21.11 with Fabric Loader 0.19.5
+[15:31:51] [ForkJoinPool-1-worker-1/WARN]: Mod com_github_tartaricalkaline_imagestream uses the version -SNAPSHOT which isn't compatible with Loader's extended semantic version format (Missing version number component!), SemVer is recommended for reliably evaluating dependencies and prioritizing newer version
+[15:31:52] [main/INFO]: Loading 100 mods:
+	- animatica 0.6.1+1.21.8
+	- baritone 1.15.0-4-g67ba6869
+	- better_player_model 1.1.4
+	   |-- architectury 19.0.1
+	   |-- cardinal-components 7.3.1
+	   |-- cardinal-components-base 7.3.1
+	   |-- cardinal-components-block 7.3.1
+	   |-- cardinal-components-chunk 7.3.1
+	   |-- cardinal-components-entity 7.3.1
+	   |-- cardinal-components-item 7.3.1
+	   |-- cardinal-components-level 7.3.1
+	   |-- cardinal-components-scoreboard 7.3.1
+	   |-- cardinal-components-world 7.3.1
+	   |-- com_electronwill_night-config_core 3.8.3
+	   |-- com_electronwill_night-config_toml 3.8.3
+	   |-- com_github_luben_zstd-jni 1.5.7-8
+	   |-- com_github_tartaricalkaline_imagestream -SNAPSHOT
+	   |-- forgeconfigapiport 21.11.1
+	   |    |-- com_electronwill_night-config_core 3.8.3
+	   |    \-- com_electronwill_night-config_toml 3.8.3
+	   \-- net_java_dev_jna_jna 5.14.0
+	- cataclysm 1.0.0
+	- dev_babbaj_nether-pathfinder 1.4.1
+	- fabric-api 0.141.6+1.21.11
+	- fabric-api-base 1.0.5+4ebb5c083e
+	- fabric-api-lookup-api-v1 1.6.114+20dc27073e
+	- fabric-biome-api-v1 17.1.1+4fc5413f3e
+	- fabric-block-api-v1 1.1.10+4ebb5c083e
+	- fabric-block-view-api-v2 1.0.39+4ebb5c083e
+	- fabric-client-gametest-api-v1 4.3.5+bfe9fcf43e
+	- fabric-command-api-v2 2.4.7+6b42a6003e
+	- fabric-content-registries-v0 10.2.14+4fc5413f3e
+	- fabric-convention-tags-v1 2.1.55+7f945d5b3e
+	- fabric-convention-tags-v2 2.17.3+8ef948ba3e
+	- fabric-crash-report-info-v1 0.3.23+4ebb5c083e
+	- fabric-data-attachment-api-v1 1.8.48+eed0806f3e
+	- fabric-data-generation-api-v1 23.4.1+69974c4e3e
+	- fabric-dimensions-v1 4.0.28+4fc5413f3e
+	- fabric-entity-events-v1 3.1.1+1d0ab4303e
+	- fabric-events-interaction-v0 4.1.1+3b89ecf63e
+	- fabric-game-rule-api-v1 2.0.3+4fc5413f3e
+	- fabric-gametest-api-v1 3.1.27+4fc5413f3e
+	- fabric-item-api-v1 11.5.20+d0c46b9e3e
+	- fabric-item-group-api-v1 4.2.36+4fc5413f3e
+	- fabric-key-binding-api-v1 1.1.7+4fc5413f3e
+	- fabric-language-kotlin 1.14.1+kotlin.2.4.20
+	   |-- org_jetbrains_kotlin_kotlin-reflect 2.4.20
+	   |-- org_jetbrains_kotlin_kotlin-stdlib 2.4.20
+	   |-- org_jetbrains_kotlin_kotlin-stdlib-jdk7 2.4.20
+	   |-- org_jetbrains_kotlin_kotlin-stdlib-jdk8 2.4.20
+	   |-- org_jetbrains_kotlinx_atomicfu-jvm 0.33.0
+	   |-- org_jetbrains_kotlinx_kotlinx-coroutines-core-jvm 1.11.0
+	   |-- org_jetbrains_kotlinx_kotlinx-coroutines-jdk8 1.11.0
+	   |-- org_jetbrains_kotlinx_kotlinx-datetime-jvm 0.8.0
+	   |-- org_jetbrains_kotlinx_kotlinx-io-bytestring-jvm 0.9.1
+	   |-- org_jetbrains_kotlinx_kotlinx-io-core-jvm 0.9.1
+	   |-- org_jetbrains_kotlinx_kotlinx-serialization-cbor-jvm 1.11.0
+	   |-- org_jetbrains_kotlinx_kotlinx-serialization-core-jvm 1.11.0
+	   \-- org_jetbrains_kotlinx_kotlinx-serialization-json-jvm 1.11.0
+	- fabric-lifecycle-events-v1 2.6.15+4ebb5c083e
+	- fabric-loot-api-v2 3.0.73+3f89f5a53e
+	- fabric-loot-api-v3 2.0.20+78c8b4663e
+	- fabric-message-api-v1 6.1.12+4ebb5c083e
+	- fabric-model-loading-api-v1 6.0.15+4fc5413f3e
+	- fabric-networking-api-v1 5.1.6+6b6d71a53e
+	- fabric-object-builder-api-v1 21.1.40+4fc5413f3e
+	- fabric-particles-v1 4.2.12+4fc5413f3e
+	- fabric-recipe-api-v1 8.2.4+4ebb5c083e
+	- fabric-registry-sync-v0 6.2.6+1718722b3e
+	- fabric-renderer-api-v1 8.0.3+f4ffd2e53e
+	- fabric-renderer-indigo 5.0.3+f4ffd2e53e
+	- fabric-rendering-fluids-v1 3.1.43+4ebb5c083e
+	- fabric-rendering-v1 16.2.10+0290ad933e
+	- fabric-resource-conditions-api-v1 5.0.35+4fc5413f3e
+	- fabric-resource-loader-v0 3.3.4+4fc5413f3e
+	- fabric-resource-loader-v1 1.0.10+78c8b4663e
+	- fabric-screen-api-v1 3.1.7+4ebb5c083e
+	- fabric-screen-handler-api-v1 1.3.162+4fc5413f3e
+	- fabric-serialization-api-v1 1.0.5+4ebb5c083e
+	- fabric-sound-api-v1 1.0.51+4fc5413f3e
+	- fabric-tag-api-v1 1.2.20+4fc5413f3e
+	- fabric-transfer-api-v1 6.0.25+4fc5413f3e
+	- fabric-transitive-access-wideners-v1 7.1.0+014c8cec3e
+	- fabricloader 0.19.5
+	- java 21
+	- minecraft 1.21.11
+	- mixinextras 0.5.5
+	- modmenu 17.0.1-beta.1
+	   \-- placeholder-api 2.8.2+1.21.10
+	- skyboxify 3.3.1
+	   |-- com_moulberry_mixinconstraints 1.1.0
+	   \-- mixinsquared 0.2.0
+	- sodium 0.8.12+mc1.21.11
+	- yet_another_config_lib_v3 3.8.2+1.21.11-fabric
+	   |-- com_twelvemonkeys_common_common-image 3.12.0
+	   |-- com_twelvemonkeys_common_common-io 3.12.0
+	   |-- com_twelvemonkeys_common_common-lang 3.12.0
+	   |-- com_twelvemonkeys_imageio_imageio-core 3.12.0
+	   |-- com_twelvemonkeys_imageio_imageio-metadata 3.12.0
+	   |-- com_twelvemonkeys_imageio_imageio-webp 3.12.0
+	   |-- org_quiltmc_parsers_gson 0.2.1
+	   \-- org_quiltmc_parsers_json 0.2.1
+[15:31:52] [main/WARN]: Runtime mod remapping disabled due to no fabric.remapClasspathFile being specified. You may need to update loom.
+[15:31:53] [main/ERROR]: Uncaught exception in thread "main"
+java.lang.RuntimeException: Failed to read classTweaker file from mod yet_another_config_lib_v3
+	at net.fabricmc.loader.impl.FabricLoaderImpl.loadClassTweakers(FabricLoaderImpl.java:538)
+	at net.fabricmc.loader.impl.launch.knot.Knot.init(Knot.java:145)
+	at net.fabricmc.loader.impl.launch.knot.Knot.launch(Knot.java:66)
+	at net.fabricmc.loader.impl.launch.knot.KnotClient.main(KnotClient.java:23)
+	at polaris.Start.main(Start.java:39)
+Caused by: net.fabricmc.loader.impl.lib.classtweaker.reader.ClassTweakerFormatException: Namespace (intermediary) does not match current runtime namespace (named)
+	at net.fabricmc.loader.impl.lib.classtweaker.reader.ClassTweakerReaderImpl.error(ClassTweakerReaderImpl.java:332)
+	at net.fabricmc.loader.impl.lib.classtweaker.reader.ClassTweakerReaderImpl.read(ClassTweakerReaderImpl.java:93)
+	at net.fabricmc.loader.impl.FabricLoaderImpl.loadClassTweakers(FabricLoaderImpl.java:536)
+	... 4 more

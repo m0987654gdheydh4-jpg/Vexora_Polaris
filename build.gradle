@@ -1,0 +1,529 @@
+<<<<<<< HEAD
+plugins {
+	id 'fabric-loom' version "${loom_version}"
+	id 'maven-publish'
+}
+
+import org.gradle.jvm.toolchain.JavaLanguageVersion
+
+version = '1.0.0'
+group = 'cataclysm.ru'
+
+def localBuildRoot = System.getenv("LOCALAPPDATA")
+if (localBuildRoot != null && !localBuildRoot.isBlank()) {
+	layout.buildDirectory = file("${localBuildRoot}/Cataclysm/gradle-build")
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+	// To change the versions see the gradle.properties file
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	mappings loom.officialMojangMappings()
+
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	compileOnly 'org.projectlombok:lombok:1.18.38'
+	annotationProcessor 'org.projectlombok:lombok:1.18.38'
+	// Fabric API. This is technically optional, but you probably want it anyway.
+	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+	// Baritone (local libs/). NetherPathfinder is a separate Fabric mod jar —
+	// Loom remaps of baritone drop nested jars, so it must sit as a sibling.
+	def baritoneJar = file("libs/baritone-api-fabric-1.15.0-4-g67ba6869.jar")
+	def netherPfJar = file("libs/nether-pathfinder-1.4.1.jar") // <-- ЭТА СТРОКА ДОЛЖНА БЫТЬ ЗДЕСЬ
+
+	if (baritoneJar.exists()) {
+		modImplementation files(baritoneJar)
+	} else {
+		logger.warn("Baritone jar missing: ${baritoneJar.absolutePath}")
+	}
+
+	// Figura — backs the Cosmetics avatars (.bbmodel + Lua). Compile against it but do NOT
+	// nest it: Figura is a standalone mod users install themselves, and shipping a second
+	// copy inside our jar would fight whichever version is already in mods/. The client has
+	// to treat it as optional at runtime and degrade if it is absent.
+	def figuraJar = fileTree(dir: "libs", include: "figura-*.jar").files.sort().find { true }
+	if (figuraJar != null) {
+		modCompileOnly files(figuraJar)
+		modLocalRuntime files(figuraJar)
+
+		// Figura ships its libraries as jar-in-jar. A raw local jar on the classpath is not a
+		// mod candidate, so the loader never unpacks META-INF/jars and Figura dies on
+		// NoClassDefFoundError: org/luaj/vm2/LuaError the moment its config initialises.
+		// Extract the ones it actually needs and hand them over as siblings, exactly like
+		// nether-pathfinder below.
+		//
+		// Deliberately not extracted: the bundled fabric-api modules (our fabric-api
+		// dependency already provides them) and mixinextras 0.3.6 (the project is on 0.5.4 —
+		// same mod id, and the older copy would just lose the version race anyway).
+		def figuraNestedNames = [
+				"luaj-core-3.0.8-figura.jar",
+				"luaj-jse-3.0.8-figura.jar",
+				"nv-websocket-client-2.14.jar"
+		]
+		def figuraNestedDir = project.layout.buildDirectory.dir("figura-nested").get().asFile
+		figuraNestedDir.mkdirs()
+		def figuraNestedJars = []
+		java.nio.file.FileSystems.newFileSystem(figuraJar.toPath(), Map.of()).withCloseable { fs ->
+			figuraNestedNames.each { name ->
+				def source = fs.getPath("META-INF/jars/" + name)
+				if (!java.nio.file.Files.exists(source)) {
+					logger.warn("Figura nested jar not found: ${name}")
+					return
+				}
+				def target = new File(figuraNestedDir, name)
+				if (!target.exists() || target.length() != java.nio.file.Files.size(source)) {
+					java.nio.file.Files.copy(source, target.toPath(),
+							java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+				}
+				figuraNestedJars << target
+			}
+		}
+		figuraNestedJars.each { modLocalRuntime files(it) }
+		logger.lifecycle("Figura on classpath: ${figuraJar.name} (+${figuraNestedJars.size()} nested libs)")
+	} else {
+		logger.warn("Figura jar missing in libs/ — cosmetics avatars will be unavailable")
+	}
+
+	if (netherPfJar.exists()) {
+		// localRuntime keeps pure-java lib on classpath for runClient without full remap
+		modLocalRuntime files(netherPfJar)
+		// also available to remapJar nesting (doLast below)
+	} else {
+		logger.warn("nether-pathfinder missing: ${netherPfJar.absolutePath}")
+	}
+}
+
+// Nest Baritone + NetherPathfinder as Fabric nested mods.
+// Fabric does NOT load jars-in-jars of nested mods, so nether-pathfinder must sit
+// next to baritone under the main mod's META-INF/jars (not only inside baritone.jar).
+def baritoneLocalJar = file("libs/baritone-api-fabric-1.15.0-4-g67ba6869.jar")
+def netherPathfinderJar = file("libs/nether-pathfinder-1.4.1.jar")
+tasks.named("remapJar").configure {
+	doLast {
+		if (!baritoneLocalJar.exists()) {
+			logger.warn("Skip nesting Baritone — jar not found")
+			return
+		}
+		// Extract nether-pathfinder from baritone if missing in libs/
+		if (!netherPathfinderJar.exists()) {
+			java.nio.file.FileSystems.newFileSystem(baritoneLocalJar.toPath(), Map.of()).withCloseable { bfs ->
+				def nested = bfs.getPath("META-INF/jars/nether-pathfinder-1.4.1.jar")
+				if (java.nio.file.Files.exists(nested)) {
+					java.nio.file.Files.createDirectories(netherPathfinderJar.toPath().parent)
+					java.nio.file.Files.copy(nested, netherPathfinderJar.toPath(),
+							java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+					logger.lifecycle("Extracted nether-pathfinder from Baritone → libs/")
+				}
+			}
+		}
+
+		def outJar = archiveFile.get().asFile
+		def toNest = [
+				"baritone-api-fabric-1.15.0-4-g67ba6869.jar": baritoneLocalJar,
+				"nether-pathfinder-1.4.1.jar"              : netherPathfinderJar
+		]
+		java.nio.file.FileSystems.newFileSystem(outJar.toPath(), Map.of("create", "false")).withCloseable { fs ->
+			def jarsArrPaths = [] as List<String>
+			toNest.each { name, src ->
+				if (src == null || !src.exists()) {
+					logger.warn("Missing nest jar: ${name}")
+					return
+				}
+				def nestedPath = "META-INF/jars/" + name
+				def dest = fs.getPath(nestedPath)
+				java.nio.file.Files.createDirectories(dest.parent)
+				java.nio.file.Files.copy(src.toPath(), dest, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+				jarsArrPaths << nestedPath
+				logger.lifecycle("Nested ${name} → ${nestedPath}")
+			}
+//hui
+			def fmj = fs.getPath("fabric.mod.json")
+			if (java.nio.file.Files.exists(fmj)) {
+				def text = java.nio.file.Files.readString(fmj)
+				def gson = new com.google.gson.GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create()
+				def json = com.google.gson.JsonParser.parseString(text).getAsJsonObject()
+				def jars = json.has("jars") && json.get("jars").isJsonArray()
+						? json.getAsJsonArray("jars")
+						: new com.google.gson.JsonArray()
+				jarsArrPaths.each { nestedPath ->
+					boolean already = false
+					jars.forEach { el ->
+						if (el.isJsonObject() && el.getAsJsonObject().has("file")
+								&& nestedPath == el.getAsJsonObject().get("file").getAsString()) {
+							already = true
+						}
+					}
+					if (!already) {
+						def entry = new com.google.gson.JsonObject()
+						entry.addProperty("file", nestedPath)
+						jars.add(entry)
+					}
+				}
+				json.add("jars", jars)
+				java.nio.file.Files.writeString(fmj, gson.toJson(json))
+			}
+		}
+	}
+}
+
+loom {
+	runs {
+		client {
+			programArgs "--username", "top_pvp_pro_228t"
+			// Avoid OOM (Baritone + nested jars + auction packs)
+			vmArgs "-Xmx8G", "-Xms2G", "-XX:+UseG1GC", "-XX:MaxMetaspaceSize=1G"
+		}
+	}
+}
+
+processResources {
+	def resourceProperties = [
+		version             : project.version,
+		minecraft_dependency: project.minecraft_version
+	]
+	inputs.properties(resourceProperties)
+
+	filesMatching("fabric.mod.json") {
+		expand resourceProperties
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 21
+	it.options.encoding = "UTF-8"
+}
+
+tasks.withType(JavaExec).configureEach {
+	javaLauncher = javaToolchains.launcherFor {
+		languageVersion = JavaLanguageVersion.of(21)
+	}
+	jvmArgs "-Xmx8G", "-Xms2G"
+	doFirst {
+		def metadata = javaLauncher.get().metadata
+		if (metadata.vendor.toString().toLowerCase(Locale.ROOT).contains('jetbrains')) {
+			jvmArgs('-XX:+AllowEnhancedClassRedefinition')
+		}
+	}
+}
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(21)
+	}
+
+	// Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
+	// if it is present.
+	// If you remove this line, sources will not be generated.
+	withSourcesJar()
+
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
+}
+
+jar {
+	def projectName = project.name
+	inputs.property "projectName", projectName
+
+	from("LICENSE") {
+		rename { "${it}_$projectName"}
+	}
+}
+
+// configure the maven publication
+publishing {
+	publications {
+		create("mavenJava", MavenPublication) {
+			from components.java
+		}
+	}
+
+	// See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
+	repositories {
+		// Add repositories to publish to here.
+		// Notice: This block does NOT have the same function as the block in the top level.
+		// The repositories here will be used for publishing your artifact, not for
+		// retrieving dependencies.
+	}
+	tasks.named("runClient").configure {
+		doFirst {
+			def vfpJar = file("libs/viafabricplus-4.4.15.jar")
+			if (vfpJar.exists()) {
+				def runMods = file("run/mods")
+				runMods.mkdirs()
+				def target = new File(runMods, vfpJar.name)
+				if (!target.exists() || target.length() != vfpJar.length()) {
+					java.nio.file.Files.copy(vfpJar.toPath(), target.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+					logger.lifecycle("Auto-copied ${vfpJar.name} to run/mods/")
+				}
+			}
+		}
+	}
+}
+=======
+plugins {
+	id 'fabric-loom' version "${loom_version}"
+	id 'maven-publish'
+}
+
+import org.gradle.jvm.toolchain.JavaLanguageVersion
+
+version = '1.0.0'
+group = 'cataclysm.ru'
+
+def localBuildRoot = System.getenv("LOCALAPPDATA")
+if (localBuildRoot != null && !localBuildRoot.isBlank()) {
+	layout.buildDirectory = file("${localBuildRoot}/Cataclysm/gradle-build")
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+	// To change the versions see the gradle.properties file
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	mappings loom.officialMojangMappings()
+
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	compileOnly 'org.projectlombok:lombok:1.18.38'
+	annotationProcessor 'org.projectlombok:lombok:1.18.38'
+	// Fabric API. This is technically optional, but you probably want it anyway.
+	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+	// Baritone (local libs/). NetherPathfinder is a separate Fabric mod jar —
+	// Loom remaps of baritone drop nested jars, so it must sit as a sibling.
+	def baritoneJar = file("libs/baritone-api-fabric-1.15.0-4-g67ba6869.jar")
+	def netherPfJar = file("libs/nether-pathfinder-1.4.1.jar") // <-- ЭТА СТРОКА ДОЛЖНА БЫТЬ ЗДЕСЬ
+
+	if (baritoneJar.exists()) {
+		modImplementation files(baritoneJar)
+	} else {
+		logger.warn("Baritone jar missing: ${baritoneJar.absolutePath}")
+	}
+
+	// Figura — backs the Cosmetics avatars (.bbmodel + Lua). Compile against it but do NOT
+	// nest it: Figura is a standalone mod users install themselves, and shipping a second
+	// copy inside our jar would fight whichever version is already in mods/. The client has
+	// to treat it as optional at runtime and degrade if it is absent.
+	def figuraJar = fileTree(dir: "libs", include: "figura-*.jar").files.sort().find { true }
+	if (figuraJar != null) {
+		modCompileOnly files(figuraJar)
+		modLocalRuntime files(figuraJar)
+
+		// Figura ships its libraries as jar-in-jar. A raw local jar on the classpath is not a
+		// mod candidate, so the loader never unpacks META-INF/jars and Figura dies on
+		// NoClassDefFoundError: org/luaj/vm2/LuaError the moment its config initialises.
+		// Extract the ones it actually needs and hand them over as siblings, exactly like
+		// nether-pathfinder below.
+		//
+		// Deliberately not extracted: the bundled fabric-api modules (our fabric-api
+		// dependency already provides them) and mixinextras 0.3.6 (the project is on 0.5.4 —
+		// same mod id, and the older copy would just lose the version race anyway).
+		def figuraNestedNames = [
+				"luaj-core-3.0.8-figura.jar",
+				"luaj-jse-3.0.8-figura.jar",
+				"nv-websocket-client-2.14.jar"
+		]
+		def figuraNestedDir = project.layout.buildDirectory.dir("figura-nested").get().asFile
+		figuraNestedDir.mkdirs()
+		def figuraNestedJars = []
+		java.nio.file.FileSystems.newFileSystem(figuraJar.toPath(), Map.of()).withCloseable { fs ->
+			figuraNestedNames.each { name ->
+				def source = fs.getPath("META-INF/jars/" + name)
+				if (!java.nio.file.Files.exists(source)) {
+					logger.warn("Figura nested jar not found: ${name}")
+					return
+				}
+				def target = new File(figuraNestedDir, name)
+				if (!target.exists() || target.length() != java.nio.file.Files.size(source)) {
+					java.nio.file.Files.copy(source, target.toPath(),
+							java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+				}
+				figuraNestedJars << target
+			}
+		}
+		figuraNestedJars.each { modLocalRuntime files(it) }
+		logger.lifecycle("Figura on classpath: ${figuraJar.name} (+${figuraNestedJars.size()} nested libs)")
+	} else {
+		logger.warn("Figura jar missing in libs/ — cosmetics avatars will be unavailable")
+	}
+
+	if (netherPfJar.exists()) {
+		// localRuntime keeps pure-java lib on classpath for runClient without full remap
+		modLocalRuntime files(netherPfJar)
+		// also available to remapJar nesting (doLast below)
+	} else {
+		logger.warn("nether-pathfinder missing: ${netherPfJar.absolutePath}")
+	}
+}
+
+// Nest Baritone + NetherPathfinder as Fabric nested mods.
+// Fabric does NOT load jars-in-jars of nested mods, so nether-pathfinder must sit
+// next to baritone under the main mod's META-INF/jars (not only inside baritone.jar).
+def baritoneLocalJar = file("libs/baritone-api-fabric-1.15.0-4-g67ba6869.jar")
+def netherPathfinderJar = file("libs/nether-pathfinder-1.4.1.jar")
+tasks.named("remapJar").configure {
+	doLast {
+		if (!baritoneLocalJar.exists()) {
+			logger.warn("Skip nesting Baritone — jar not found")
+			return
+		}
+		// Extract nether-pathfinder from baritone if missing in libs/
+		if (!netherPathfinderJar.exists()) {
+			java.nio.file.FileSystems.newFileSystem(baritoneLocalJar.toPath(), Map.of()).withCloseable { bfs ->
+				def nested = bfs.getPath("META-INF/jars/nether-pathfinder-1.4.1.jar")
+				if (java.nio.file.Files.exists(nested)) {
+					java.nio.file.Files.createDirectories(netherPathfinderJar.toPath().parent)
+					java.nio.file.Files.copy(nested, netherPathfinderJar.toPath(),
+							java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+					logger.lifecycle("Extracted nether-pathfinder from Baritone → libs/")
+				}
+			}
+		}
+
+		def outJar = archiveFile.get().asFile
+		def toNest = [
+				"baritone-api-fabric-1.15.0-4-g67ba6869.jar": baritoneLocalJar,
+				"nether-pathfinder-1.4.1.jar"              : netherPathfinderJar
+		]
+		java.nio.file.FileSystems.newFileSystem(outJar.toPath(), Map.of("create", "false")).withCloseable { fs ->
+			def jarsArrPaths = [] as List<String>
+			toNest.each { name, src ->
+				if (src == null || !src.exists()) {
+					logger.warn("Missing nest jar: ${name}")
+					return
+				}
+				def nestedPath = "META-INF/jars/" + name
+				def dest = fs.getPath(nestedPath)
+				java.nio.file.Files.createDirectories(dest.parent)
+				java.nio.file.Files.copy(src.toPath(), dest, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+				jarsArrPaths << nestedPath
+				logger.lifecycle("Nested ${name} → ${nestedPath}")
+			}
+//hui
+			def fmj = fs.getPath("fabric.mod.json")
+			if (java.nio.file.Files.exists(fmj)) {
+				def text = java.nio.file.Files.readString(fmj)
+				def gson = new com.google.gson.GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create()
+				def json = com.google.gson.JsonParser.parseString(text).getAsJsonObject()
+				def jars = json.has("jars") && json.get("jars").isJsonArray()
+						? json.getAsJsonArray("jars")
+						: new com.google.gson.JsonArray()
+				jarsArrPaths.each { nestedPath ->
+					boolean already = false
+					jars.forEach { el ->
+						if (el.isJsonObject() && el.getAsJsonObject().has("file")
+								&& nestedPath == el.getAsJsonObject().get("file").getAsString()) {
+							already = true
+						}
+					}
+					if (!already) {
+						def entry = new com.google.gson.JsonObject()
+						entry.addProperty("file", nestedPath)
+						jars.add(entry)
+					}
+				}
+				json.add("jars", jars)
+				java.nio.file.Files.writeString(fmj, gson.toJson(json))
+			}
+		}
+	}
+}
+
+loom {
+	runs {
+		client {
+			programArgs "--username", "top_pvp_pro_228t"
+			// Avoid OOM (Baritone + nested jars + auction packs)
+			vmArgs "-Xmx8G", "-Xms2G", "-XX:+UseG1GC", "-XX:MaxMetaspaceSize=1G"
+		}
+	}
+}
+
+processResources {
+	def resourceProperties = [
+		version             : project.version,
+		minecraft_dependency: project.minecraft_version
+	]
+	inputs.properties(resourceProperties)
+
+	filesMatching("fabric.mod.json") {
+		expand resourceProperties
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 21
+	it.options.encoding = "UTF-8"
+}
+
+tasks.withType(JavaExec).configureEach {
+	javaLauncher = javaToolchains.launcherFor {
+		languageVersion = JavaLanguageVersion.of(21)
+	}
+	jvmArgs "-Xmx8G", "-Xms2G"
+	doFirst {
+		def metadata = javaLauncher.get().metadata
+		if (metadata.vendor.toString().toLowerCase(Locale.ROOT).contains('jetbrains')) {
+			jvmArgs('-XX:+AllowEnhancedClassRedefinition')
+		}
+	}
+}
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(21)
+	}
+
+	// Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
+	// if it is present.
+	// If you remove this line, sources will not be generated.
+	withSourcesJar()
+
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
+}
+
+jar {
+	def projectName = project.name
+	inputs.property "projectName", projectName
+
+	from("LICENSE") {
+		rename { "${it}_$projectName"}
+	}
+}
+
+// configure the maven publication
+publishing {
+	publications {
+		create("mavenJava", MavenPublication) {
+			from components.java
+		}
+	}
+
+	// See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
+	repositories {
+		// Add repositories to publish to here.
+		// Notice: This block does NOT have the same function as the block in the top level.
+		// The repositories here will be used for publishing your artifact, not for
+		// retrieving dependencies.
+	}
+	tasks.named("runClient").configure {
+		doFirst {
+			def vfpJar = file("libs/viafabricplus-4.4.15.jar")
+			if (vfpJar.exists()) {
+				def runMods = file("run/mods")
+				runMods.mkdirs()
+				def target = new File(runMods, vfpJar.name)
+				if (!target.exists() || target.length() != vfpJar.length()) {
+					java.nio.file.Files.copy(vfpJar.toPath(), target.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+					logger.lifecycle("Auto-copied ${vfpJar.name} to run/mods/")
+				}
+			}
+		}
+	}
+}
+>>>>>>> 5e17b8c88bee6520c84da5bb9a92ae5c1f0b7c88
