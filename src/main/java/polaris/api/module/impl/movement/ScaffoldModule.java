@@ -212,7 +212,7 @@ public final class ScaffoldModule extends Module {
     @Override
     protected void onEnable() {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null) { disable(); return; }
+        if (mc.player == null) { setEnabled(false); return; }
         placementY = mc.player.blockPosition().getY() - 1;
         startY = mc.player.blockPosition().getY();
         jumps = 2; ticksUntilJump = 0; forceSneak = 0; delayCounter = 0;
@@ -298,7 +298,7 @@ public final class ScaffoldModule extends Module {
 
     private boolean isBlockBelow() {
         Minecraft mc = Minecraft.getInstance();
-        AABB box = mc.player.getBoundingBox().expand(0.5, 0.0, 0.5).move(0.0, -1.05, 0.0);
+        AABB box = mc.player.getBoundingBox().inflate(0.5, 0.0, 0.5).move(0.0, -1.05, 0.0);
         return mc.level.getBlockCollisions(mc.player, box).iterator().hasNext();
     }
 
@@ -344,7 +344,7 @@ public final class ScaffoldModule extends Module {
         Minecraft mc = Minecraft.getInstance();
         BlockPos targeted = getTargetedPosition(predicted);
         Vec3 eye = mc.player.getEyePosition();
-        int range = technique.is("Expand") ? expandLength.intValue() : 0;
+        int range = technique.is("Expand") ? (int) expandLength.getValue() : 0;
 
         Placement best = null; double bestScore = Double.MAX_VALUE;
 
@@ -366,7 +366,7 @@ public final class ScaffoldModule extends Module {
                     if (ns.isAir() || ns.getCollisionShape(mc.level, n).isEmpty()) continue;
 
                     Direction face = d.getOpposite();               // грань соседа, в которую кликаем
-                    Vec3 faceCenter = Vec3.atCenterOf(n).add(Vec3.atLowerCornerOf(face.getNormal()).scale(0.5));
+                    Vec3 faceCenter = Vec3.atCenterOf(n).add(Vec3.atLowerCornerOf(face.step()).scale(0.5));
                     Vec3 aim = aimPoint(faceCenter, face, n);
                     if (eye.distanceTo(aim) > 4.4) continue;
                     if (!passesMinDist(aim, face)) continue;
@@ -744,7 +744,7 @@ public final class ScaffoldModule extends Module {
             mc.player.setYRot(rot.getYaw());
             mc.player.setXRot(rot.getPitch());
             if (mc.getConnection() != null) {
-                mc.getConnection().send(new ServerboundMovePlayerPacket.Rot(rot.getYaw(), rot.getPitch(), onGround));
+                mc.getConnection().send(new ServerboundMovePlayerPacket.Rot(rot.getYaw(), rot.getPitch(), onGround, mc.player.isSprinting()));
             }
         }
 
@@ -763,8 +763,8 @@ public final class ScaffoldModule extends Module {
             int slot = findBestSlot();
             if (slot == -1) return;
             silentSlot = slot;
-            slotRestore = slotResetDelay.intValue();
-            mc.player.getInventory().selected = slot;
+            slotRestore = (int) slotResetDelay.getValue();
+            mc.player.getInventory().setSelectedSlot(slot);
             if (mc.getConnection() != null) mc.getConnection().send(new ServerboundSetCarriedItemPacket(slot));
             hand = InteractionHand.MAIN_HAND;
         }
@@ -795,7 +795,7 @@ public final class ScaffoldModule extends Module {
         // Коллбэки фич
         wasPlaced = true;
         placedSinceEagle++;
-        if (placedSinceEagle > blocksToEagle.intValue()) {
+        if (placedSinceEagle > (int) blocksToEagle.getValue()) {
             placedSinceEagle = 0;
             if (eagle.getValue() && eagleMode.is("Packet") && mc.getConnection() != null) {
                 mc.getConnection().send(new ServerboundPlayerCommandPacket(mc.player, ServerboundPlayerCommandPacket.Action.PRESS_SHIFT_KEY));
@@ -803,7 +803,7 @@ public final class ScaffoldModule extends Module {
             }
         }
         blinkPulseMs = System.currentTimeMillis();
-        delayCounter = delay.intValue();
+        delayCounter = (int) delay.getValue();
         currentTarget = null;
     }
 
@@ -820,7 +820,7 @@ public final class ScaffoldModule extends Module {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || silentSlot == -1) return;
         if (slotRestore > 0 && !force) { slotRestore--; return; }
-        mc.player.getInventory().selected = silentSlot == -1 ? 0 : prevSlot();
+        mc.player.getInventory().setSelectedSlot(silentSlot == -1 ? 0 : prevSlot());
         silentSlot = -1;
     }
 
@@ -829,7 +829,7 @@ public final class ScaffoldModule extends Module {
     // ============================ TOWER ============================
     private void towerTick(Minecraft mc) {
         if (!isTowering()) { jumpOffY = Double.NaN; return; }
-        boolean jumpHeld = mc.options.keyJump.isPressed() || mc.options.keyJump.isDown();
+        boolean jumpHeld = mc.options.keyJump.isDown();
         if (!jumpHeld || getBlockCount() <= 0) return;
         Vec3 v = mc.player.getDeltaMovement();
         int age = mc.player.tickCount;
@@ -954,7 +954,7 @@ public final class ScaffoldModule extends Module {
             event.setCancelled(true);
             if (mc.getConnection() != null) {
                 mc.getConnection().send(new ServerboundMovePlayerPacket.Pos(
-                        p.getX() + 0.1, p.getY(), p.getZ() + 0.1, p.isOnGround()));
+                        p.position().x + 0.1, p.position().y, p.position().z + 0.1, p.isOnGround()));
             }
             return;
         }
@@ -964,7 +964,7 @@ public final class ScaffoldModule extends Module {
         boolean elapsed = System.currentTimeMillis() - blinkPulseMs >= blinkTime.getValue();
         boolean flush = blinkFlush.isSelected("Place") && wasPlaced
                 || blinkFlush.isSelected("Towering") && isTowering()
-                || blinkFlush.isSelected("Sneaking") && mc.player.isSneaking()
+                || blinkFlush.isSelected("Sneaking") && mc.player.hasEnoughImpulseToStartSprinting()
                 || blinkFlush.isSelected("On Ground") && mc.player.onGround()
                 || blinkFlush.isSelected("In Air") && !mc.player.onGround();
         if (elapsed || flush) {
@@ -990,7 +990,7 @@ public final class ScaffoldModule extends Module {
 
         renderedBlocks.entrySet().removeIf(e -> now - e.getValue() > renderFade.getValue());
         for (Map.Entry<BlockPos, Long> e : renderedBlocks.entrySet()) {
-            float t = 1f - (now - e.getValue()) / (float) renderFade.getValue();
+            float t = 1f - (now - e.getValue()) / renderFade.getFloat();
             int faded = ColorUtil.withAlpha(rgb, Math.round(((rgb >> 24) & 0xFF) * Mth.clamp(t, 0, 1)));
             AABB box = new AABB(e.getKey());
             Render3D.drawBox(box, faded, 1.0f, true, true, false);

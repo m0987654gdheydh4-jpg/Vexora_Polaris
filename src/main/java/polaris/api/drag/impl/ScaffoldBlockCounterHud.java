@@ -1,7 +1,7 @@
 package polaris.api.drag.impl;
 
 import net.minecraft.world.item.ItemStack;
-import polaris.api.module.impl.world.ScaffoldModule;
+import polaris.api.module.impl.movement.ScaffoldModule;
 import polaris.utils.render.animation.Easings;
 import polaris.utils.render.animation.SmoothAnimation;
 import polaris.utils.render.item.RenderItem;

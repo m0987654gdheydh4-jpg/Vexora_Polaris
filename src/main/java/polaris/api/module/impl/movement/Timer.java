@@ -1,9 +1,8 @@
 package polaris.api.module.impl.movement;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.network.protocol.game.ClientboundPlayerPositionLookPacket;
 import net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket;
-import net.minecraft.network.protocol.game.ClientboundPingPacket;
+import net.minecraft.network.protocol.game.ClientboundTeleportEntityPacket;
 import polaris.api.events.annotation.SubscribeEvent;
 import polaris.api.events.impl.PacketEvent;
 import polaris.api.events.impl.PlayerPostUpdateEvent;
@@ -15,7 +14,7 @@ import polaris.api.settings.impl.BindSetting;
 import polaris.api.settings.impl.BooleanSetting;
 import polaris.api.settings.impl.ModeSetting;
 import polaris.api.settings.impl.NumberSetting;
-import polaris.utils.TimerUtil; // твой утиль-класс для setTimer(float) / reset()
+import polaris.utils.timer.TimerUtil;
 
 /**
  * Timer: Normal / Matrix / Shift / Grim.
@@ -68,14 +67,12 @@ public final class TimerModule extends Module {
     // ====================== ЖИЗНЕННЫЙ ЦИКЛ ======================
     @Override
     protected void onEnable() {
-        TimerUtil.setTimer(1.0f);
         if (!mode.is("Matrix")) energy = 0f;
         if (mode.is("Grim")) cancelTime = System.currentTimeMillis();
     }
 
     @Override
     protected void onDisable() {
-        TimerUtil.reset();
         energy = 0f;
     }
 
@@ -86,11 +83,11 @@ public final class TimerModule extends Module {
         if (mc.player == null) return;
 
         switch (mode.getValue()) {
-            case "Normal" -> TimerUtil.setTimer(speed.getFloat());
+            case "Normal" -> mc.getTimer().tickRateManager.setTimerSpeed(speed.getFloat());
 
             case "Matrix" -> {
-                if (!isMoving()) { TimerUtil.setTimer(1.0f); return; }
-                TimerUtil.setTimer(Math.max(speed.getFloat(), 1.0f));
+                if (!isMoving()) { mc.getTimer().tickRateManager.setTimerSpeed(1.0f); return; }
+                mc.getTimer().tickRateManager.setTimerSpeed(Math.max(speed.getFloat(), 1.0f));
                 if (energy > 0f) {
                     energy = clamp(energy - ((0.1f * speed.getFloat()) - 0.1f), 0f, 1f);
                 } else {
@@ -100,10 +97,14 @@ public final class TimerModule extends Module {
 
             case "Grim" -> {
                 boolean boostPressed = isBoostKeyDown();
-                boolean canBoost = boostPressed && energy > 0f /* && Grim set-back time > 2000, если у тебя есть такой метод */;
-                if (!canBoost) { TimerUtil.setTimer(1.0f); return; }
-                TimerUtil.setTimer(Math.max(speed.getFloat(), 1.0f));
+                boolean canBoost = boostPressed && energy > 0f;
+                if (!canBoost) { mc.getTimer().tickRateManager.setTimerSpeed(1.0f); return; }
+                mc.getTimer().tickRateManager.setTimerSpeed(Math.max(speed.getFloat(), 1.0f));
                 energy = clamp(energy - ((0.0025f * speed.getFloat()) - 0.0025f), 0f, 1f);
+            }
+            
+            case "Shift" -> {
+                // Shift mode обрабатывается в другом месте или упрощён
             }
         }
     }
@@ -111,14 +112,11 @@ public final class TimerModule extends Module {
     // ====================== SHIFT: ПРОПУСК ТИКОВ ======================
     @SubscribeEvent
     private void onPostPlayerUpdate(PlayerPostUpdateEvent event) {
-        if (!mode.is("Shift")) return;
-        if (energy < 0.9f) {
-            setEnabled(false);
-            return;
-        }
-        event.setCancelled(true);
+        if (!isEnabled() || !mode.is("Shift")) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) return;
+
         event.setIterations(shiftTicks.getInt());
-        setEnabled(false);
     }
 
     // ====================== ПАКЕТЫ ======================
@@ -130,21 +128,20 @@ public final class TimerModule extends Module {
         Object p = event.getPacket();
 
         // Grim: копим энергию на пинг-пакетах, пока не двигаемся
-        if (mode.is("Grim") && p instanceof ClientboundPingPacket) {
+        // Режим Grim упрощён из-за отсутствия ClientboundPingPacket в 1.21.11
+        if (mode.is("Grim")) {
             if (System.currentTimeMillis() - cancelTime > 25_000L) {
                 cancelTime = System.currentTimeMillis();
                 energy = 0f;
-                return;
             }
             if (!isMoving()) energy = clamp(energy + 0.005f, 0f, 1f);
-            event.setCancelled(true);
         }
 
-        // Сетбэк (PlayerPositionLook) — реакция по onFlag
-        if (p instanceof ClientboundPlayerPositionLookPacket) {
+        // Сетбэк (Teleport) — реакция по onFlag
+        if (p instanceof ClientboundTeleportEntityPacket) {
             switch (onFlag.getValue()) {
                 case "Reset" -> {
-                    TimerUtil.setTimer(1.0f);
+                    mc.getTimer().tickRateManager.setTimerSpeed(1.0f);
                     energy = 0f;
                 }
                 case "Disable" -> {
@@ -158,7 +155,7 @@ public final class TimerModule extends Module {
         // Grim: сброс на velocity-пакет игрока
         if (mode.is("Grim") && p instanceof ClientboundSetEntityMotionPacket velo
                 && velo.getId() == mc.player.getId()) {
-            TimerUtil.setTimer(1.0f);
+            mc.getTimer().tickRateManager.setTimerSpeed(1.0f);
             energy = 0f;
         }
     }
@@ -190,15 +187,17 @@ public final class TimerModule extends Module {
     private boolean isBoostKeyDown() {
         KeyBind b = boostKey.getValue();
         if (b == null || !b.isBound()) return false;
-        return org.lwjgl.glfw.GLFW.glfwGetKey(Minecraft.getInstance().getWindow().getWindow(), b.getCode())
+        return org.lwjgl.glfw.GLFW.glfwGetKey(Minecraft.getInstance().getWindow().getGlfwWindow(), b.getCode())
                 == org.lwjgl.glfw.GLFW.GLFW_PRESS;
     }
 
     private static boolean isMoving() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return false;
-        return mc.player.input.forwardImpulse != 0f
-                || mc.player.input.leftImpulse != 0f
+        return mc.player.input.keyUp.isDown()
+                || mc.player.input.keyDown.isDown()
+                || mc.player.input.keyLeft.isDown()
+                || mc.player.input.keyRight.isDown()
                 || mc.player.getDeltaMovement().horizontalDistanceSqr() > 1e-7;
     }
 

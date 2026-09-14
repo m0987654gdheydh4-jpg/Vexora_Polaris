@@ -17,6 +17,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import polaris.api.events.impl.CloseScreenEvent;
+import polaris.api.events.impl.PlayerPostUpdateEvent;
 import polaris.api.events.impl.PlayerTravelEvent;
 import polaris.api.events.impl.PushEvent;
 import polaris.api.events.impl.UsingItemEvent;
@@ -66,6 +67,7 @@ public abstract class ClientPlayerEntityMixin {
     private void cataclysm$onInputTick(CallbackInfo ci) {
         if (minecraft.player != null) {
             Manager.postEvent(new PlayerTravelEvent(Vec3.ZERO, false));
+            Manager.postEvent(new PlayerPostUpdateEvent());
         }
     }
 
